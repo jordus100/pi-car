@@ -3,3 +3,9 @@
     width: fit-content;
     height: fit-content;
 }
+
+.turnoff-btn {
+    height: 30px;
+    font-size: 15px;
+    margin-top: 30px;
+}

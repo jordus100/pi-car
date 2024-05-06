@@ -9,7 +9,7 @@ export default function JoystickControl() {
   const wsMsgFilter = () => {
     return true
   }
-  const {sendJsonMessage, readyState, getWebSocket} = useWebSocket('ws://raspberrypi.local:8000',
+  const {sendJsonMessage, sendMessage, readyState, getWebSocket} = useWebSocket('ws://raspberrypi.local:8000',
     {reconnectInterval: 100, heartbeat: false, filter: wsMsgFilter})
   const JOYSTICK_DEADZONE = 10
   let leftMotThrust = useRef(0)
@@ -63,12 +63,17 @@ export default function JoystickControl() {
     return () => clearInterval(interval);
   });
 
+  function onShutdownClick() {
+    sendMessage("shutdown", false)
+  }
+
   return (
   <>
     <div className="joystick-container">
       <Joystick size={joystickSize} stickSize={stickSize} baseShape="square" controlPlaneShape="square" minDistance={JOYSTICK_DEADZONE} baseColor="gray" stickColor="black" move={handleJoystickMove} stop={handleJoystickMove}></Joystick>
     </div>
     <p>Control connection: {readyState === 1 ? 'CONNECTED' : 'NOT CONNECTED'}</p>
+    <button className="turnoff-btn" onClick={onShutdownClick}>Turn off robot</button>
   </>
   )
 }
