@@ -1,7 +1,11 @@
 import './App.css';
 import JoystickControl from "./JoystickControl";
+import {useEffect} from "react";
 
 function App() {
+  useEffect(() => {
+    document.title = 'Robot remote control'
+  }, []);
   return (
     <div className="App">
       <header>
