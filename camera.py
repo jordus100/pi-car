@@ -14,19 +14,6 @@ from picamera2 import Picamera2
 from picamera2.encoders import JpegEncoder
 from picamera2.outputs import FileOutput
 
-PAGE = """\
-<html>
-<head>
-<title>picamera2 MJPEG streaming demo</title>
-</head>
-<body>
-<h1>Picamera2 MJPEG Streaming Demo</h1>
-<img src="stream.mjpg" width="640" height="480" />
-</body>
-</html>
-"""
-
-
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
         self.frame = None
@@ -39,6 +26,10 @@ class StreamingOutput(io.BufferedIOBase):
 
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
+    def __init__(self, *args, output=None, **kwargs):
+            self.output = output  # Store output explicitly in the handler instance
+            super().__init__(*args, **kwargs)
+
     def do_GET(self):
         if self.path == '/stream.mjpg':
             self.send_response(200)
@@ -71,15 +62,22 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
+    def __init__(self, server_address, RequestHandlerClass, output):
+            self.output = output  # Store output explicitly in the server
+            super().__init__(server_address, RequestHandlerClass)
+
+    def finish_request(self, request, client_address):
+        """Override this method to pass output to the request handler"""
+        self.RequestHandlerClass(request, client_address, self, output=self.output)
 
 picam2 = Picamera2()
-picam2.configure(picam2.create_video_configuration(main={"size": (640, 480)}))
+picam2.configure(picam2.create_video_configuration(main={"size": (1640, 1232)}))
 output = StreamingOutput()
 picam2.start_recording(JpegEncoder(), FileOutput(output))
 
 try:
     address = ('', 9000)
-    server = StreamingServer(address, StreamingHandler)
+    server = StreamingServer(address, StreamingHandler, output=output)
     server.serve_forever()
 finally:
     picam2.stop_recording()

@@ -6,7 +6,7 @@ function App() {
     <div className="App">
       <header>
         <h1>Jordan's robot remote control</h1>
-        <img src="http://raspberrypi.local:9000/stream.mjpg" width="640" height="480"/>
+        <img src="http://raspberrypi.local:9000/stream.mjpg" width="1640" height="1232"/>
         <JoystickControl></JoystickControl>
       </header>
     </div>
