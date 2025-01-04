@@ -5,7 +5,14 @@
 }
 
 .turnoff-btn {
-    height: 30px;
-    font-size: 15px;
+    height: 50px;
+    width: 200px;
+    max-width: 60%;
+    max-height: 2.5rem;
+    font-size: 1.5rem;
     margin-top: 30px;
+}
+
+.robot-control p {
+    font-size: 1.5rem;
 }

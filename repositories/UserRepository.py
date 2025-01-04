@@ -26,9 +26,9 @@ class UserRepository:
         db.session.commit()
 
     @staticmethod
-    def createAdmin(password):
+    def create_admin(password):
         if not User.query.filter_by(is_admin=True).first():
-            admin = User(username='admin', password=password, is_admin=True, first_login=True)
+            admin = User(username='admin', password=password, is_admin=True)
             db.session.add(admin)
             db.session.commit()
             click.echo('Default admin account created.')

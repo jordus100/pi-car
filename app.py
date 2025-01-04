@@ -7,7 +7,7 @@ from flask_swagger_ui import get_swaggerui_blueprint
 
 from db import db
 from repositories.UserRepository import UserRepository
-import controllers.UserController
+from controllers.UserController import UserBp
 
 
 def init_app(db, config):
@@ -31,7 +31,7 @@ env = os.getenv('FLASK_ENV', 'default')
 config_class = config_map.get(env)
 
 app = init_app(db, config_class)
-app.register_blueprint(controllers.UserController.UserBp, url_prefix='/api')
+app.register_blueprint(UserBp, url_prefix='/api')
 
 
 @app.cli.command('seed_db')
@@ -39,7 +39,7 @@ app.register_blueprint(controllers.UserController.UserBp, url_prefix='/api')
 def seed_db():
     """Seed the database with initial data."""
     admin_pass = os.getenv('DEFAULT_PASSWORD')
-    UserRepository.createAdmin(admin_pass)
+    UserRepository.create_admin(admin_pass)
 
 
 if __name__ == '__main__':

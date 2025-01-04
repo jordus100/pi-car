@@ -1,62 +1,143 @@
-#!/home/pi/dyplom/venv2/bin/python
-from time import sleep
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
+import uvicorn
 import os
-import asyncio
-from websockets.server import serve
 import json
+from MotorControl import MotorControl
+import multiprocessing
 
-import MotorControl
 
-class MotorControlWS:
-    def __init__(self, port=8000, motorControl=MotorControl()):
-        self.motorControl = motorControl
-        self.port = port
-        asyncio.run(self.serve_ws())
+class MotorControlService:
+    def __init__(self):
+        self.motor_control = MotorControl()
 
-    def handleMotorAction(self, params, motor):
+    def handle_motor_action(self, params, motor):
         match params["action"]:
             case "stop":
-                self.motorControl.Stop(motor)
+                self.motor_control.Stop(motor)
             case "drive":
                 thrust = params["thrust"]
-                direction = 'forward'
-                if thrust < 0:
-                    direction = 'backward'
-                self.motorControl.Run(motor, direction, thrust)
+                direction = 'forward' if thrust >= 0 else 'backward'
+                self.motor_control.Run(motor, direction, abs(thrust))
 
-    def handleMotorControlMsg(self, params):
-        leftMot = params["leftMotor"]
-        rightMot = params["rightMotor"]
-        self.handleMotorAction(leftMot, "left")
-        self.handleMotorAction(rightMot, "right")
+    def handle_motor_control_msg(self, params):
+        left_motor = params["leftMotor"]
+        right_motor = params["rightMotor"]
+        self.handle_motor_action(left_motor, "left")
+        self.handle_motor_action(right_motor, "right")
 
-    def handleMessage(self, msg):
-        print(msg)
+    def handle_message(self, msg):
         try:
             if msg == "shutdown":
-                MotorControl.Stop("left")
-                MotorControl.Stop("right")
+                self.motor_control.Stop("left")
+                self.motor_control.Stop("right")
                 os.system("sudo shutdown -h now")
-                return
+                return "System shutting down..."
+
             event = json.loads(msg)
             match event["type"]:
                 case "motorControl":
-                    self.handleMotorControlMsg(event["params"])
-            return "ack"
-        except:
-            print("Error in processing control message", msg)
+                    self.handle_motor_control_msg(event["params"])
+                    return "ack"
+        except Exception as e:
+            print(f"Error in processing control message: {msg}, {e}")
+            return "error"
 
-    async def echo(self, websocket):
-        print("CONNECTED")
+class ControlWsState:
+    def __init__(self):
+        self.connected_clients_count = 0
+        self.current_token = None
+
+def async_ws_app(tokenQueue, controlQueue, motor_service):
+
+    ws_app = FastAPI()
+
+    ws_state = ControlWsState()
+
+    def authorize(token):
+        if not token:
+            return False
+        while not tokenQueue.empty():
+            ws_state.current_token = tokenQueue.get()
+            print(f"New token: {ws_state.current_token}")
+        if ws_state.current_token and token == ws_state.current_token:
+            return True
+        else:
+            return False
+
+    @ws_app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket, token: str = None):
+        if not authorize(token):
+            await websocket.close()
+            return
+        if ws_state.connected_clients_count > 1:
+            await websocket.close()
+            return
+        await websocket.accept()
+        ws_state.connected_clients_count += 1
+        controlQueue.put(ws_state)
+        print(f"WS Client connected")
         try:
-            async for msg in websocket:
-                response = self.handleMessage(msg)
-                await websocket.send(response)
+            while True:
+                msg = await websocket.receive_text()
+                #response = motor_service.handle_message(msg)
+                print(f"Received message: {msg}")
+                await websocket.send_text("ack")
+        except Exception as e:
+            print(f"WebSocket error: {e}")
         finally:
-            print("DISCONNECTED")
-            MotorControl.Stop("left")
-            MotorControl.Stop("right")
+            #motor_service.motor_control.Stop("left")
+            #motor_service.motor_control.Stop("right")
+            print(f"Client disconnected")
+            if websocket.client_state != WebSocketDisconnect:
+                await websocket.close()
+            ws_state.connected_clients_count -= 1
+            ws_state.current_token = None
+            controlQueue.put(ws_state)
 
-    async def serve_ws(self):
-        async with serve(self.echo, "", 8000, ping_interval=1, ping_timeout=1):
-            await asyncio.Future()
+
+    uvicorn.run(ws_app, host="0.0.0.0", port=8081)
+
+
+def async_rest_app(tokenQueue, controlQueue):
+    rest_app = FastAPI()
+    control_ws_state = ControlWsState()
+
+    def get_latest_control_state():
+        control_state = None
+        while not controlQueue.empty():
+            control_state = controlQueue.get()
+        if control_state:
+            control_ws_state.current_token = control_state.current_token
+            control_ws_state.connected_clients_count = control_state.connected_clients_count
+
+    @rest_app.get("/status")
+    async def get_status():
+        get_latest_control_state()
+        return JSONResponse(content={"status": "active", "clients": control_ws_state.connected_clients_count})
+
+
+    @rest_app.post("/startControlSession")
+    async def start_control_session():
+        get_latest_control_state()
+        if control_ws_state.connected_clients_count > 0:
+            return JSONResponse(content={"message": "Control session already active"}, status_code=400)
+        token = os.urandom(16).hex()
+        tokenQueue.put(token)
+        return JSONResponse(content={"token": token})
+
+    uvicorn.run(rest_app, host="0.0.0.0", port=8080)
+
+# Running both servers
+if __name__ == "__main__":
+
+    tokens = multiprocessing.Queue()
+
+    ws_process = multiprocessing.Process(target=async_ws_app, args=(tokens,))
+    rest_process = multiprocessing.Process(target=async_rest_app, args=(tokens,))
+
+    ws_process.start()
+    rest_process.start()
+
+    ws_process.join()
+    rest_process.join()

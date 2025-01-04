@@ -68,12 +68,12 @@ export default function JoystickControl() {
   }
 
   return (
-  <>
+  <div className={"robot-control"}>
     <div className="joystick-container">
       <Joystick size={joystickSize} stickSize={stickSize} baseShape="square" controlPlaneShape="square" minDistance={JOYSTICK_DEADZONE} baseColor="gray" stickColor="black" move={handleJoystickMove} stop={handleJoystickMove}></Joystick>
     </div>
     <p>Control connection: {readyState === 1 ? 'CONNECTED' : 'NOT CONNECTED'}</p>
     <button className="turnoff-btn" onClick={onShutdownClick}>Turn off robot</button>
-  </>
+  </div>
   )
 }

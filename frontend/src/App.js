@@ -1,4 +1,3 @@
-import './App.css';
 import {useContext, useEffect} from "react";
 import {AuthContext, AuthProvider} from "./services/AuthProvider";
 import {BrowserRouter, Route, Router, Routes} from "react-router-dom";

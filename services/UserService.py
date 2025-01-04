@@ -1,3 +1,5 @@
+import sys
+
 from werkzeug.security import generate_password_hash
 
 from db import User
@@ -22,8 +24,6 @@ class UserService:
     @staticmethod
     def get_user_by_id(user_id):
         user = UserRepository.get_by_id(user_id)
-        if not user:
-            raise ValueError(f"User with ID {user_id} not found")
         return user
 
     @staticmethod

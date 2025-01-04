@@ -1,26 +1,33 @@
+import sys
+from functools import wraps
+
 from flask import Blueprint, request, jsonify, session
 
 from services.AuthService import AuthService
 from services.UserService import UserService
-import jwt
 
 UserBp = Blueprint('User', __name__)
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not (session.get('user_id') and session.get('is_admin')):
+            return jsonify({'message': 'Unauthorized'}), 401
+        return(f(*args, **kwargs))
+    return decorated_function
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        userId = session.get('user_id')
+        if not userId:
+            return jsonify({'message': 'Unauthorized'}), 401
+        return (f(*args, **kwargs))
+    return decorated_function
+
 @UserBp.route('/add_user', methods=['POST'])
+@admin_required
 def add_user():
-    admin_token = request.headers.get('Authorization')
-    if not admin_token:
-        return jsonify({'message': 'Token is missing'}), 401
-
-    try:
-        decoded = AuthService.decode_token(admin_token)
-        if not UserService.is_admin(decoded['user_id']):
-            raise jwt.InvalidTokenError
-    except jwt.ExpiredSignatureError:
-        return jsonify({'message': 'Token expired'}), 401
-    except jwt.InvalidTokenError:
-        return jsonify({'message': 'Invalid token'}), 401
-
     data = request.get_json()
     if not all(key in data for key in ('username', 'password')):
         return jsonify({'message': 'Username and password are required'}), 400
@@ -33,15 +40,15 @@ def add_user():
 
 
 @UserBp.route('/users', methods=['GET'])
+@admin_required
 def list_users():
     users = UserService.get_all_users()
     return jsonify(users)
 
 
 @UserBp.route('/users/<int:user_id>', methods=['DELETE'])
+@admin_required
 def delete_user(user_id):
-    # check if admin's session
-    userId =
     if not UserService.delete_user(user_id):
         return jsonify({"message": f"User with ID {user_id} not found or cannot be deleted."}), 404
     return jsonify({"message": f"User with ID {user_id} has been deleted."})
@@ -63,31 +70,42 @@ def generate_auth_token():
 @UserBp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
+    print(data, file=sys.stderr)
     if not all(key in data for key in ('username', 'password')):
         return jsonify({'message': 'Username and password are required'}), 400
 
     if not AuthService.authenticate_user(data['username'], data['password']):
         return jsonify({'message': 'Invalid username or password'}), 401
 
-    session['user_id'] = UserService.get_user_by_username(data['username'])
-    return jsonify({'message': 'Login successful'}), 200
+    is_admin = False
+    if UserService.is_admin(UserService.get_user_by_username(data['username'])):
+        session['is_admin'] = True
+        is_admin = True
+    else:
+        session['is_admin'] = False
+
+    session['user_id'] = UserService.get_user_by_username(data['username']).id
+    return jsonify({'message': 'Login successful', 'isAdmin': is_admin}), 200
 
 
 @UserBp.route('/logout', methods=['POST'])
+@login_required
 def logout():
     session.pop('user_id', None)
     return jsonify({'message': 'Logout successful'}), 200
 
 
 @UserBp.route('/check_session', methods=['GET'])
+@login_required
 def check_session():
-    if 'user_id' in session:
-        user = UserService.get_user_by_id(session['user_id'])
-        return jsonify({'message': 'User is logged in', 'username': user.username}), 200
-    return jsonify({'message': 'No active session'}), 401
+    user = UserService.get_user_by_id(session.get('user_id'))
+    if user is None:
+        return jsonify({'message': 'User not found'}), 404
+    return jsonify({'message': 'User is logged in', 'username': user.username, 'isAdmin': user.is_admin}), 200
 
 
 @UserBp.route('/change_password', methods=['POST'])
+@login_required
 def change_password():
     if 'user_id' not in session:
         return jsonify({'message': 'Unauthorized'}), 401

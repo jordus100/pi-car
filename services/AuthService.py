@@ -2,13 +2,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import jwt
 import datetime
 from flask import current_app
-from db import User
+from repositories.UserRepository import UserRepository
 
 class AuthService:
     @staticmethod
     def authenticate_user(username, password):
         """Authenticate a user with their username and password."""
-        user = User.query.filter_by(username=username).first()
+        user = UserRepository.get_by_username(username)
         if user and check_password_hash(user.password, password):
             return user
         return None
@@ -41,5 +41,4 @@ class AuthService:
             raise ValueError("Old password is incorrect")
 
         user.password = generate_password_hash(new_password)
-        user.first_login = False  # Optional: Reset first login flag if needed
         user.save()
