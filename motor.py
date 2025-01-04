@@ -1,4 +1,6 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from asyncio import wait_for
+
+from fastapi import FastAPI, WebSocket
 from fastapi.responses import JSONResponse
 import uvicorn
 import os
@@ -28,12 +30,6 @@ class MotorControlService:
 
     def handle_message(self, msg):
         try:
-            if msg == "shutdown":
-                self.motor_control.Stop("left")
-                self.motor_control.Stop("right")
-                os.system("sudo shutdown -h now")
-                return "System shutting down..."
-
             event = json.loads(msg)
             match event["type"]:
                 case "motorControl":
@@ -48,7 +44,7 @@ class ControlWsState:
         self.connected_clients_count = 0
         self.current_token = None
 
-def async_ws_app(tokenQueue, controlQueue, motor_service):
+def async_ws_app(port, tokenQueue, controlQueue, motor_service):
 
     ws_app = FastAPI()
 
@@ -65,12 +61,12 @@ def async_ws_app(tokenQueue, controlQueue, motor_service):
         else:
             return False
 
-    @ws_app.websocket("/ws")
+    @ws_app.websocket("/robotControlWs")
     async def websocket_endpoint(websocket: WebSocket, token: str = None):
         if not authorize(token):
             await websocket.close()
             return
-        if ws_state.connected_clients_count > 1:
+        if ws_state.connected_clients_count > 0:
             await websocket.close()
             return
         await websocket.accept()
@@ -79,27 +75,37 @@ def async_ws_app(tokenQueue, controlQueue, motor_service):
         print(f"WS Client connected")
         try:
             while True:
-                msg = await websocket.receive_text()
+                try:
+                    msg = await wait_for(websocket.receive_text(), timeout=0.5)
+                except TimeoutError:
+                    print("Timeout, stopping motors")
+                    #motor_service.motor_control.Stop("left")
+                    #motor_service.motor_control.Stop("right")
                 #response = motor_service.handle_message(msg)
                 print(f"Received message: {msg}")
-                await websocket.send_text("ack")
+                if msg == "pingMsg":
+                    await websocket.send_text("pongMsg")
+                else:
+                    await websocket.send_text("ack")
         except Exception as e:
             print(f"WebSocket error: {e}")
         finally:
+            try:
+                await websocket.close()
+            except Exception as e:
+                print(f"WS already closed")
             #motor_service.motor_control.Stop("left")
             #motor_service.motor_control.Stop("right")
             print(f"Client disconnected")
-            if websocket.client_state != WebSocketDisconnect:
-                await websocket.close()
             ws_state.connected_clients_count -= 1
             ws_state.current_token = None
             controlQueue.put(ws_state)
 
 
-    uvicorn.run(ws_app, host="0.0.0.0", port=8081)
+    uvicorn.run(ws_app, host="0.0.0.0", port=port)
 
 
-def async_rest_app(tokenQueue, controlQueue):
+def async_rest_app(port, tokenQueue, controlQueue):
     rest_app = FastAPI()
     control_ws_state = ControlWsState()
 
@@ -124,17 +130,20 @@ def async_rest_app(tokenQueue, controlQueue):
             return JSONResponse(content={"message": "Control session already active"}, status_code=400)
         token = os.urandom(16).hex()
         tokenQueue.put(token)
-        return JSONResponse(content={"token": token})
+        return JSONResponse(content={"token": token, "wsPort": os.getenv("MOTOR_SERVICE_EXT_WS_PORT", 8080)})
 
-    uvicorn.run(rest_app, host="0.0.0.0", port=8080)
+    uvicorn.run(rest_app, host="127.0.0.1", port=port)
 
-# Running both servers
 if __name__ == "__main__":
 
     tokens = multiprocessing.Queue()
+    control_ws_state = multiprocessing.Queue()
 
-    ws_process = multiprocessing.Process(target=async_ws_app, args=(tokens,))
-    rest_process = multiprocessing.Process(target=async_rest_app, args=(tokens,))
+    ws_port = os.getenv("MOTOR_SERVICE_EXT_WS_PORT", 8080)
+    rest_port = os.getenv("MOTOR_SERVICE_INT_REST_PORT", 8081)
+
+    ws_process = multiprocessing.Process(target=async_ws_app, args=(ws_port, tokens, control_ws_state, None))
+    rest_process = multiprocessing.Process(target=async_rest_app, args=(rest_port, tokens, control_ws_state))
 
     ws_process.start()
     rest_process.start()
