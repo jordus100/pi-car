@@ -1,6 +1,4 @@
-#!/home/pi/dyplom/venv2/bin/python
-import time
-import os
+import json
 
 from PCA9685 import PCA9685
 
@@ -50,3 +48,37 @@ class MotorControl():
             self.pwm.setDutycycle(self.PWMA, 0)
         elif (motor == 'right'):
             self.pwm.setDutycycle(self.PWMB, 1)
+
+class MotorControlService:
+    def __init__(self):
+        self.motor_control = MotorControl()
+
+    def handle_motor_action(self, params, motor):
+        match params["action"]:
+            case "stop":
+                self.motor_control.Stop(motor)
+            case "drive":
+                thrust = params["thrust"]
+                direction = 'forward' if thrust >= 0 else 'backward'
+                self.motor_control.Run(motor, direction, abs(thrust))
+
+    def handle_motor_control_msg(self, params):
+        left_motor = params["leftMotor"]
+        right_motor = params["rightMotor"]
+        self.handle_motor_action(left_motor, "left")
+        self.handle_motor_action(right_motor, "right")
+
+    def handle_message(self, msg):
+        try:
+            event = json.loads(msg)
+            match event["type"]:
+                case "motorControl":
+                    self.handle_motor_control_msg(event["params"])
+                    return "ack"
+        except Exception as e:
+            print(f"Error in processing control message: {msg}, {e}")
+            return "error"
+
+    def stopMotors(self):
+        self.motor_control.Stop("left")
+        self.motor_control.Stop("right")
