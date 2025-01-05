@@ -11,7 +11,7 @@ class MotorControl():
         self.BIN1 = 3
         self.BIN2 = 4
         self.pwm = PCA9685(0x40, debug=False)
-        self.pwm.setPWMFreq(50)
+        self.pwm.setPWMFreq(500)
         self.max_speed = max_speed
         self.min_speed = min_speed
 
@@ -24,29 +24,29 @@ class MotorControl():
             raise Exception("Motor must be 'left' or 'right'")
         # scale speed to the range between min_speed and max_speed
         speed = int(((speed / 100) * (self.max_speed - self.min_speed) + self.min_speed) * 100)
-        if(motor == 'left'):
+        if motor == 'left':
             self.pwm.setDutycycle(self.PWMA, speed)
-            if(direction == 'forward'):
+            if direction == 'forward':
                 self.pwm.setLevel(self.AIN1, 0)
                 self.pwm.setLevel(self.AIN2, 1)
-            elif(direction == 'backward'):
+            elif direction == 'backward':
                 self.pwm.setLevel(self.AIN1, 1)
                 self.pwm.setLevel(self.AIN2, 0)
-        elif(motor == 'right'):
+        elif motor == 'right':
             self.pwm.setDutycycle(self.PWMB, speed)
-            if (direction == 'forward'):
+            if direction == 'forward':
                 self.pwm.setLevel(self.BIN1, 0)
                 self.pwm.setLevel(self.BIN2, 1)
-            elif (direction == 'backward'):
+            elif direction == 'backward':
                 self.pwm.setLevel(self.BIN1, 1)
                 self.pwm.setLevel(self.BIN2, 0)
 
     def Stop(self, motor):
         if motor not in ['left', 'right']:
             raise Exception("Motor must be 'left' or 'right'")
-        if (motor == 'left'):
+        if motor == 'left':
             self.pwm.setDutycycle(self.PWMA, 0)
-        elif (motor == 'right'):
+        elif motor == 'right':
             self.pwm.setDutycycle(self.PWMB, 1)
 
 class MotorControlService:
