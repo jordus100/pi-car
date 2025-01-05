@@ -8,6 +8,7 @@ import asyncio
 from datetime import datetime
 import os
 from typing import Optional
+import uvicorn
 
 PHOTO_SAVE_DIR = "photos"
 os.makedirs(PHOTO_SAVE_DIR, exist_ok=True)
@@ -27,27 +28,35 @@ class AsyncStreamingOutput:
         return await self.queue.get()
 
 class CameraManager:
-    def __init__(self, photo_interval: 30):
-        self.camera = None
+    def __init__(self, camera, photo_interval: int = 30):
+        self.camera = camera
         self.output = None
         self.photo_task: Optional[asyncio.Task] = None
         self.photo_interval = photo_interval
+        self.stream_clients = 0  # Track active clients for streaming
 
-    async def start_camera(self):
-        if self.camera is None:
-            self.camera = Picamera2()
-            self.camera.configure(self.camera.create_video_configuration(main={"size": (1640, 1232)}))
-            self.output = AsyncStreamingOutput()
+    async def initialize_camera(self):
+        self.camera.configure(self.camera.create_video_configuration(main={"size": (1640, 1232)}))
+        self.output = AsyncStreamingOutput()
+        print("Camera initialized")
+
+    async def start_recording(self):
+        if self.camera and not self.camera.recording:
             self.camera.start_recording(JpegEncoder(), FileOutput(self.output))
-            print("Camera started")
+            print("Camera recording started")
 
-    async def stop_camera(self):
-        if self.camera:
+    async def stop_recording(self):
+        if self.camera and self.camera.recording:
             self.camera.stop_recording()
+            print("Camera recording stopped")
+
+    async def close_camera(self):
+        if self.camera:
+            if self.camera.recording:
+                await self.stop_recording()
             self.camera.close()
             self.camera = None
-            self.output = None
-            print("Camera stopped")
+            print("Camera closed")
 
     def start_photo_task(self):
         if not self.photo_task or self.photo_task.done():
@@ -60,14 +69,12 @@ class CameraManager:
 
     async def capture_photos(self):
         """Background task to take still photos at regular intervals."""
-        await self.start_camera()
         while True:
             try:
-                if self.camera:
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    filepath = os.path.join(PHOTO_SAVE_DIR, f"{timestamp}.jpg")
-                    self.camera.capture_file(filepath)
-                    print(f"Photo captured: {filepath}")
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filepath = os.path.join(PHOTO_SAVE_DIR, f"{timestamp}.jpg")
+                self.camera.capture_file(filepath)
+                print(f"Photo captured: {filepath}")
                 await asyncio.sleep(self.photo_interval)
             except asyncio.CancelledError:
                 print("Photo capture task canceled")
@@ -75,36 +82,55 @@ class CameraManager:
             except Exception as e:
                 print(f"Error capturing photo: {e}")
 
-camera_manager = CameraManager()
 
-@asynccontextmanager
-async def camera_lifespan(app):
-    camera_manager.start_photo_task()
-    yield
-    camera_manager.stop_photo_task()
+def camera_streaming_app(camera_manager):
 
-app = FastAPI(lifespan=camera_lifespan)
+    @asynccontextmanager
+    async def camera_lifespan(app):
+        await camera_manager.initialize_camera()
+        camera_manager.start_photo_task()
+        yield
+        camera_manager.stop_photo_task()
+        await camera_manager.close_camera()
 
-async def mjpeg_stream():
-    boundary = b"--FRAME\r\n"
-    try:
-        await camera_manager.start_camera()
-        while True:
-            frame = await camera_manager.output.get_frame()
-            yield boundary
-            yield b"Content-Type: image/jpeg\r\n"
-            yield f"Content-Length: {len(frame)}\r\n\r\n".encode()
-            yield frame
-            yield b"\r\n"
-    except asyncio.CancelledError:
-        print("Streaming stopped by client")
+    app = FastAPI(lifespan=camera_lifespan)
 
-@app.get("/stream.mjpg")
-async def get_stream():
-    if camera_manager.camera is None:
-        raise HTTPException(status_code=500, detail="Camera not initialized")
-    return StreamingResponse(mjpeg_stream(), media_type="multipart/x-mixed-replace; boundary=FRAME")
+    async def mjpeg_stream():
+        boundary = b"--FRAME\r\n"
+        try:
+            await camera_manager.start_recording()
+            while True:
+                frame = await camera_manager.output.get_frame()
+                yield boundary
+                yield b"Content-Type: image/jpeg\r\n"
+                yield f"Content-Length: {len(frame)}\r\n\r\n".encode()
+                yield frame
+                yield b"\r\n"
+        except asyncio.CancelledError:
+            print("Streaming stopped by client")
+        finally:
+            # Decrease the client count when a client disconnects
+            camera_manager.stream_clients -= 1
+            print(f"Client disconnected, active clients: {camera_manager.stream_clients}")
+            if camera_manager.stream_clients == 0:
+                await camera_manager.stop_recording()
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the MJPEG streaming server!"}
+    @app.get("/stream.mjpg")
+    async def get_stream():
+        # Increase the client count when a new client connects
+        camera_manager.stream_clients += 1
+        print(f"New client connected, active clients: {camera_manager.stream_clients}")
+        return StreamingResponse(mjpeg_stream(), media_type="multipart/x-mixed-replace; boundary=FRAME")
+
+    @app.get("/")
+    async def root():
+        return {"message": "Welcome to the MJPEG streaming server!"}
+
+    return app
+
+if __name__ == "__main__":
+    camera = Picamera2()
+    camera_manager = CameraManager(camera)
+    camera_app = camera_streaming_app(camera_manager)
+    camera_port = int(os.getenv("CAMERA_SERVICE_EXT_PORT", 8000))
+    uvicorn.run(camera_app, host="0.0.0.0", port=camera_port)

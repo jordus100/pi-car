@@ -15,3 +15,8 @@ def add_user():
     response = requests.post(f"http://localhost:{controlServicePort}/startControlSession")
     return jsonify(response.json()), response.status_code
 
+@RobotBp.route('/auth', methods=['GET'])
+@login_required
+def auth():
+    return jsonify({"message": "Authorized"}), 200
+

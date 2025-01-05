@@ -24,7 +24,7 @@ export default function JoystickControl() {
       const wsData = await getRobotControlWsData()
       setWsUrl(`ws://${process.env.REACT_APP_WS_HOST}:${wsData.wsPort}/robotControlWs?token=${wsData.token}`)
     } catch (e) {
-      if (e.response && e.response.status === 403) {
+      if (e.response && e.response.status === 400) {
         setMessage('Someone else is already controlling the robot')
       }
       console.error('Failed to get WS data', e)
