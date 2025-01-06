@@ -43,8 +43,8 @@ def async_ws_app(port, tokenQueue, controlQueue, motor_service):
                     msg = await wait_for(websocket.receive_text(), timeout=0.5)
                 except TimeoutError:
                     print("Timeout, stopping motors")
-                    #motor_service.stopMotors()
-                #response = motor_service.handle_message(msg)
+                    motor_service.stopMotors()
+                response = motor_service.handle_message(msg)
                 print(f"Received message: {msg}")
                 if msg == "pingMsg":
                     await websocket.send_text("pongMsg")
@@ -57,7 +57,7 @@ def async_ws_app(port, tokenQueue, controlQueue, motor_service):
                 await websocket.close()
             except Exception as e:
                 print(f"WS already closed")
-            # motor_service.stopMotors()
+            motor_service.stopMotors()
             print(f"Client disconnected")
             ws_state.connected_clients_count -= 1
             ws_state.current_token = None

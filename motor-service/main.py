@@ -2,6 +2,7 @@ import multiprocessing
 import os
 from websocket_app import async_ws_app
 from rest_app import async_rest_app
+from motor_control_service import MotorControlService
 
 if __name__ == "__main__":
     tokens = multiprocessing.Queue()
@@ -10,7 +11,8 @@ if __name__ == "__main__":
     ws_port = int(os.getenv("MOTOR_SERVICE_EXT_WS_PORT", 8080))
     rest_port = int(os.getenv("MOTOR_SERVICE_INT_REST_PORT", 8081))
 
-    ws_process = multiprocessing.Process(target=async_ws_app, args=(ws_port, tokens, control_ws_state, None))
+    motorService = MotorControlService()
+    ws_process = multiprocessing.Process(target=async_ws_app, args=(ws_port, tokens, control_ws_state, motorService))
     rest_process = multiprocessing.Process(target=async_rest_app, args=(rest_port, tokens, control_ws_state))
 
     ws_process.start()
