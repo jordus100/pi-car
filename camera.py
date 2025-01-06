@@ -34,6 +34,7 @@ class CameraManager:
         self.photo_task: Optional[asyncio.Task] = None
         self.photo_interval = photo_interval
         self.stream_clients = 0  # Track active clients for streaming
+        self.recording = False
 
     async def initialize_camera(self):
         self.camera.configure(self.camera.create_video_configuration(main={"size": (1640, 1232)}))
@@ -41,18 +42,19 @@ class CameraManager:
         print("Camera initialized")
 
     async def start_recording(self):
-        if self.camera and not self.camera.recording:
+        if self.camera and not self.recording:
             self.camera.start_recording(JpegEncoder(), FileOutput(self.output))
+            self.recording = True
             print("Camera recording started")
 
     async def stop_recording(self):
-        if self.camera and self.camera.recording:
+        if self.camera and self.recording:
             self.camera.stop_recording()
             print("Camera recording stopped")
 
     async def close_camera(self):
         if self.camera:
-            if self.camera.recording:
+            if self.recording:
                 await self.stop_recording()
             self.camera.close()
             self.camera = None
@@ -73,7 +75,9 @@ class CameraManager:
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 filepath = os.path.join(PHOTO_SAVE_DIR, f"{timestamp}.jpg")
-                self.camera.capture_file(filepath)
+                req = camera.capture_request()
+                req.save(filepath)
+                req.release()
                 print(f"Photo captured: {filepath}")
                 await asyncio.sleep(self.photo_interval)
             except asyncio.CancelledError:
