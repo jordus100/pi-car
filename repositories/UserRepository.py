@@ -1,4 +1,5 @@
 import click
+from werkzeug.security import generate_password_hash
 
 from db import db, User
 
@@ -28,7 +29,8 @@ class UserRepository:
     @staticmethod
     def create_admin(password):
         if not User.query.filter_by(is_admin=True).first():
-            admin = User(username='admin', password=password, is_admin=True)
+            hash = generate_password_hash(password)
+            admin = User(username='admin', password=hash, is_admin=True)
             db.session.add(admin)
             db.session.commit()
             click.echo('Default admin account created.')
