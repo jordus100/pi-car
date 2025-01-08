@@ -9,7 +9,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 class DefaultConfig(Config):
-    SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://root:{os.getenv('DB_PASSWORD')}@localhost:3306/Robot"
+    SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://admin_user:{os.getenv('DB_PASSWORD')}@localhost:3306/Robot"
 
 class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'

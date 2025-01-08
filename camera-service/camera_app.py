@@ -21,23 +21,27 @@ def camera_streaming_app(camera_manager, authentication_url):
     app = FastAPI(lifespan=camera_lifespan)
 
     async def mjpeg_stream():
-        boundary = b"--FRAME\r\n"
+        boundary = b'--FRAME\r\n'
         try:
-            await camera_manager.start_recording()
+            await camera_manager.start_recording(purpose='streaming')
             while True:
-                frame = await camera_manager.output.get_frame()
-                yield boundary
-                yield b"Content-Type: image/jpeg\r\n"
-                yield f"Content-Length: {len(frame)}\r\n\r\n".encode()
-                yield frame
-                yield b"\r\n"
+                await asyncio.sleep(0.1)
+                while camera_manager.output.is_frame():
+                    frame = camera_manager.output.get_frame()
+                    print(frame[5000])
+                    ret = boundary
+                    ret += b'Content-Type: image/jpeg\r\n'
+                    ret += f'Content-Length: {len(frame)}\r\n\r\n'.encode()
+                    ret += frame
+                    ret += b'\r\n'
+                    yield ret
         except asyncio.CancelledError:
             print("Streaming stopped by client")
         finally:
             camera_manager.stream_clients -= 1
             print(f"Client disconnected, active clients: {camera_manager.stream_clients}")
             if camera_manager.stream_clients == 0:
-                await camera_manager.stop_recording()
+                await camera_manager.stop_recording(purpose='streaming')
 
     async def authenticate_via_flask(request: Request):
         cookies = request.cookies
@@ -46,14 +50,19 @@ def camera_streaming_app(camera_manager, authentication_url):
             if response.status_code != 200:
                 raise HTTPException(status_code=401, detail="Authentication failed")
 
-    @app.get("/stream.mjpg")
+    @app.get("/camera/stream.mjpg")
     async def get_stream(request: Request):
         await authenticate_via_flask(request)
         camera_manager.stream_clients += 1
         print(f"New client connected, active clients: {camera_manager.stream_clients}")
-        return StreamingResponse(mjpeg_stream(), media_type="multipart/x-mixed-replace; boundary=FRAME")
+        return StreamingResponse(mjpeg_stream(), headers={
+            'Age': '0',
+            'Cache-Control': 'no-cache, private',
+            'Pragma': 'no-cache',
+            'Content-Type': 'multipart/x-mixed-replace; boundary=FRAME'
+        })
 
-    @app.get("/")
+    @app.get("/camera")
     async def root():
         return {"message": "Welcome to the MJPEG streaming server!"}
 

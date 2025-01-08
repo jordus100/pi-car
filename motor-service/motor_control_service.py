@@ -11,7 +11,7 @@ class MotorControl():
         self.BIN1 = 3
         self.BIN2 = 4
         self.pwm = PCA9685(0x40, debug=False)
-        self.pwm.setPWMFreq(500)
+        self.pwm.setPWMFreq(100)
         self.max_speed = max_speed
         self.min_speed = min_speed
 
@@ -23,7 +23,8 @@ class MotorControl():
         if motor not in ['left', 'right']:
             raise Exception("Motor must be 'left' or 'right'")
         # scale speed to the range between min_speed and max_speed
-        speed = int(((speed / 100) * (self.max_speed - self.min_speed) + self.min_speed) * 100)
+        speed = int(((speed / 100) * (self.max_speed - self.min_speed) + self.min_speed))
+        print(speed)
         if motor == 'left':
             self.pwm.setDutycycle(self.PWMA, speed)
             if direction == 'forward':

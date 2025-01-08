@@ -44,12 +44,12 @@ def async_ws_app(port, tokenQueue, controlQueue, motor_service):
                 except TimeoutError:
                     print("Timeout, stopping motors")
                     motor_service.stopMotors()
-                response = motor_service.handle_message(msg)
+                    continue
                 print(f"Received message: {msg}")
                 if msg == "pingMsg":
                     await websocket.send_text("pongMsg")
                 else:
-                    await websocket.send_text("ack")
+                    response = motor_service.handle_message(msg)
         except Exception as e:
             print(f"WebSocket error: {e}")
         finally:

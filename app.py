@@ -4,6 +4,7 @@ from flask.cli import with_appcontext
 from flask_migrate import Migrate
 from dotenv import load_dotenv
 from flask_swagger_ui import get_swaggerui_blueprint
+from flask_cors import CORS
 
 from controllers.RobotController import RobotBp
 from db import db
@@ -34,6 +35,7 @@ config_class = config_map.get(env)
 app = init_app(db, config_class)
 app.register_blueprint(UserBp, url_prefix='/api')
 app.register_blueprint(RobotBp, url_prefix='/api')
+CORS(app, support_credentials=True)
 
 
 @app.cli.command('seed_db')
