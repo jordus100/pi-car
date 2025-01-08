@@ -3,9 +3,10 @@ import {Joystick} from "react-joystick-component";
 import {useEffect, useRef, useState} from "react";
 import useWebSocket, {ReadyState} from "react-use-websocket";
 import {getRobotControlWsData} from "./services/Api";
+import ControlSettings from "./ControlSettings";
 
 export default function JoystickControl() {
-  const [joystickSize, setJoystickSize] = useState(window.screen.width < 400 ? window.screen.width * 0.85 : 400)
+  const [joystickSize, setJoystickSize] = useState(window.screen.width < 500 ? window.screen.width * 0.75 : 400)
   const [stickSize, setStickSize] = useState(joystickSize * 0.4)
   const [wsUrl, setWsUrl] = useState('')
   const {sendJsonMessage, sendMessage, readyState } =
@@ -110,14 +111,18 @@ export default function JoystickControl() {
   }, [readyState]);
 
   return (
-  <div className={"robot-control"}>
-    <div className="joystick-container">
-      {readyState !== ReadyState.OPEN ? <p>{message}</p> :
-        <Joystick size={joystickSize} stickSize={stickSize} baseShape="square" controlPlaneShape="square" minDistance={JOYSTICK_DEADZONE} baseColor="gray" stickColor="black" move={handleJoystickMove} stop={handleJoystickMove}></Joystick>
-      }
+    <div className={"robot-control"}>
+      <div className="dummy"></div>
+      <div className="joystick-container">
+        {readyState !== ReadyState.OPEN ? <p>{message}</p> :
+          <Joystick size={joystickSize} stickSize={stickSize} baseShape="square" controlPlaneShape="square"
+                    minDistance={JOYSTICK_DEADZONE} baseColor="gray" stickColor="black" move={handleJoystickMove}
+                    stop={handleJoystickMove}></Joystick>
+        }
+      </div>
+      <div className="control-settings-container">
+        <ControlSettings readyState={readyState} pingTime={pingTime} message={message}/>
+      </div>
     </div>
-    <p>Control connection: {readyState === 1 ? 'CONNECTED' : 'NOT CONNECTED'}</p>
-    <p>Ping: {pingTime} ms</p>
-  </div>
   )
 }

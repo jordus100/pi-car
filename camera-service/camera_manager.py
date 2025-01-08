@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Optional
 from queue import Queue
 
-from picamera2.encoders import JpegEncoder
-from picamera2.outputs import FileOutput
+# from picamera2.encoders import JpegEncoder
+# from picamera2.outputs import FileOutput
 
 PHOTO_SAVE_DIR = "photos"
 os.makedirs(PHOTO_SAVE_DIR, exist_ok=True)
@@ -47,7 +47,8 @@ class CameraManager:
     async def start_recording(self, purpose=None):
         """Start recording for streaming."""
         if self.camera and not self.recording:
-            self.camera.start_recording(JpegEncoder(), FileOutput(self.output))
+            #self.camera.start_recording(JpegEncoder(), FileOutput(self.output))
+            self.camera.start_recording(self.output)
             self.recording = True
             if purpose == 'streaming':
                 self.streaming = True
@@ -83,7 +84,6 @@ class CameraManager:
 
     async def capture_photos(self):
         """Background task to take still photos at regular intervals."""
-        config = self.camera.create_still_configuration()
         while True:
             try:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

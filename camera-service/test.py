@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import uvicorn
 
-from camera_manager import CameraManager
+from camera_manager import CameraManager, AsyncStreamingOutput
 from camera_app import camera_streaming_app
 
 class MockCamera:
@@ -18,7 +18,10 @@ class MockCamera:
     def create_video_configuration(self, **kwargs):
         pass
 
-    def start_recording(self, encoder, output):
+    def set_controls(self, config):
+        pass
+
+    def start_recording(self, output):
         self.recording = True
         self.output = output
         asyncio.create_task(self._generate_frames())
@@ -38,8 +41,8 @@ class MockCamera:
             col = np.random.randint(0, 255, 3)
             frame[:] = col
             _, buffer = cv2.imencode('.jpg', frame)
-            await self.output.write(buffer.tobytes())
-            await asyncio.sleep(1)
+            self.output.write(buffer.tobytes())
+            await asyncio.sleep(0.1)
 
 if __name__ == "__main__":
     camera = MockCamera()
