@@ -1,2 +1,9 @@
 motor-service/__pycache__/
 camera-service/__pycache__/
+photos/
+migrations/
+__pycache__/
+.idea/
+venv/
+venv2/
+frontend/node_modules
