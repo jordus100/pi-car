@@ -22,4 +22,5 @@ def startApp(motorService):
 
 if __name__ == "__main__":
     motorService = MotorControlService()
+    print("Starting app")
     startApp(motorService)

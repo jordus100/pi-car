@@ -1,3 +1,4 @@
+import os
 import sys
 from functools import wraps
 
@@ -19,8 +20,13 @@ def admin_required(f):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        print(token)
+        apiToken = os.getenv('API_TOKEN')
+        print(apiToken)
+
         userId = session.get('user_id')
-        if not userId:
+        if not (userId or (token and token == apiToken)):
             return jsonify({'message': 'Unauthorized'}), 401
         return (f(*args, **kwargs))
     return decorated_function

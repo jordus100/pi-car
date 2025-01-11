@@ -6,3 +6,37 @@
     max-height: 35vh;
     max-width: 95%;
 }
+
+.App .header {
+    height: fit-content;
+    padding-top: 50px;
+    margin-bottom: 50px;
+}
+
+.App .header-center {
+    position: absolute;
+    left: 25%;
+    right: 25%;
+    top: 25px;
+}
+
+.App h1 {
+    font-size: 2rem;
+    color: blue;
+    font-weight: bold;
+}
+
+.App .header-right {
+    margin-left: auto;
+    width: fit-content;
+}
+
+@media (max-width: 1200px) {
+    .App .header-right {
+        margin-right: auto;
+    }
+    .App .header-center {
+        position: static;
+        margin-top: 50px;
+    }
+}

@@ -3,21 +3,35 @@
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
+    box-sizing: border-box;
 }
 
 .joystick-container {
     margin: 80px 0;
     width: fit-content;
     height: fit-content;
+    display: flex;
+    justify-content: center;
+    align-content: center;
 }
 
 .control-settings-container {
-    min-width: 2000px;
+    min-width: 400px;
     margin: 60px 0;
+    box-sizing: border-box;
     flex: 1;
 }
 
 .dummy {
-    min-width: 2000px;
+    width: 400px;
     flex: 1;
+}
+
+@media (max-width: 1500px) {
+    .joystick-container {
+        width: 100%;
+    }
+    .control-settings-container {
+        margin: 0 20px;
+    }
 }

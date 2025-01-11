@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 from flask_swagger_ui import get_swaggerui_blueprint
 
 from controllers.RobotController import RobotBp
-from db import db
+from db import db, Settings
+from repositories.SettingsRepository import SettingsRepository
 from repositories.UserRepository import UserRepository
 from controllers.UserController import UserBp
 
@@ -42,6 +43,9 @@ def seed_db():
     """Seed the database with initial data."""
     admin_pass = os.getenv('DEFAULT_PASSWORD')
     UserRepository.create_admin(admin_pass)
+    SettingsRepository.add(Settings(name='maxMotorPower', value='100'))
+    SettingsRepository.add(Settings(name='motorTrim', value='100'))
+    print('Database seeded.')
 
 
 if __name__ == '__main__':

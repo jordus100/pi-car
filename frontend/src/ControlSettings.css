@@ -1,3 +1,30 @@
-.control-settings p {
+.control-settings {
     font-size: 1.5rem;
+}
+
+.control-settings input {
+    margin: 10px 0;
+    padding: 5px;
+    font-size: 1rem;
+    width: 80%;
+}
+
+.control-settings label {
+    display: block;
+    font-size: 1rem;
+    margin-top: 10px;
+}
+
+.control-settings .settings {
+    margin: 40px 0;
+}
+
+.control-settings input {
+    max-width: 60%;
+    margin: 0 10px;
+    vertical-align: middle;
+}
+
+.control-settings .value {
+    display: inline;
 }

@@ -9,3 +9,8 @@ export const getRobotControlWsData = async () => {
   const response = await Api.post('/control/startSession');
   return response.data;
 }
+
+export const getSettings = async () => {
+  const response = await Api.get('/settings');
+  return response.data;
+}

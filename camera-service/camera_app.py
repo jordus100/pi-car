@@ -1,4 +1,6 @@
 import asyncio
+import queue
+
 import httpx
 from fastapi import Request, HTTPException
 
@@ -23,11 +25,13 @@ def camera_streaming_app(camera_manager, authentication_url):
     async def mjpeg_stream():
         boundary = b'--FRAME\r\n'
         try:
-            await camera_manager.start_recording(purpose='streaming')
+            out = await camera_manager.start_recording(purpose='streaming')
+            frameQueue = queue.Queue()
+            out.subscribe(frameQueue)
             while True:
                 await asyncio.sleep(0.1)
-                while camera_manager.output.is_frame():
-                    frame = camera_manager.output.get_frame()
+                while not frameQueue.empty():
+                    frame = frameQueue.get_nowait()
                     print(frame[5000])
                     ret = boundary
                     ret += b'Content-Type: image/jpeg\r\n'
@@ -38,6 +42,7 @@ def camera_streaming_app(camera_manager, authentication_url):
         except asyncio.CancelledError:
             print("Streaming stopped by client")
         finally:
+            out.unsubscribe(frameQueue)
             camera_manager.stream_clients -= 1
             print(f"Client disconnected, active clients: {camera_manager.stream_clients}")
             if camera_manager.stream_clients == 0:

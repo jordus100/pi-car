@@ -13,18 +13,19 @@ os.makedirs(PHOTO_SAVE_DIR, exist_ok=True)
 
 class AsyncStreamingOutput(io.BufferedIOBase):
     def __init__(self):
-        self.queue = Queue()
         self.latest_frame: Optional[bytes] = None
+        self.queues = []
 
     def write(self, buf):
         self.latest_frame = buf
-        self.queue.put(buf)
+        for queue in self.queues:
+            queue.put(buf)
 
-    def get_frame(self):
-        return self.queue.get_nowait()
+    def subscribe(self, clientQueue):
+        self.queues.append(clientQueue)
 
-    def is_frame(self):
-        return not self.queue.empty()
+    def unsubscribe(self, clientQueue):
+        self.queues.remove(clientQueue)
     
 
 class CameraManager:
@@ -53,6 +54,7 @@ class CameraManager:
             if purpose == 'streaming':
                 self.streaming = True
             print("Camera recording started")
+        return self.output
 
     async def stop_recording(self, purpose=None):
         """Stop recording for streaming."""

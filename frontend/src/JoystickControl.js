@@ -27,6 +27,8 @@ export default function JoystickControl() {
     } catch (e) {
       if (e.response && e.response.status === 400) {
         setMessage('Someone else is already controlling the robot')
+      } else {
+        setMessage('Failed to connect to control server')
       }
       console.error('Failed to get WS data', e)
     }
@@ -121,7 +123,7 @@ export default function JoystickControl() {
         }
       </div>
       <div className="control-settings-container">
-        <ControlSettings readyState={readyState} pingTime={pingTime} message={message}/>
+        <ControlSettings readyState={readyState} pingTime={pingTime} message={message} sendJsonMessage={sendJsonMessage}/>
       </div>
     </div>
   )

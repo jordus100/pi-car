@@ -4,6 +4,7 @@ import {BrowserRouter, Route, Router, Routes} from "react-router-dom";
 import LoginPage from "./Login";
 import ProtectedRoute from "./ProtectedRoute";
 import MainPage from "./MainPage";
+import Settings from "./settings/Settings";
 
 function App() {
   useEffect(() => {
@@ -16,6 +17,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<ProtectedRoute />}>
             <Route path="/" element={<MainPage />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>

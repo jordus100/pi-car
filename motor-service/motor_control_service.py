@@ -1,9 +1,10 @@
 import json
+import requests
 
 from PCA9685 import PCA9685
 
 class MotorControl():
-    def __init__(self, max_speed=80, min_speed=0):
+    def __init__(self, max_speed=80, min_speed=0, trim=0):
         self.PWMA = 0
         self.AIN1 = 1
         self.AIN2 = 2
@@ -14,6 +15,7 @@ class MotorControl():
         self.pwm.setPWMFreq(100)
         self.max_speed = max_speed
         self.min_speed = min_speed
+        self.trim = 0
 
     def Run(self, motor, direction, speed):
         if speed > 100 or speed < 0:
@@ -51,8 +53,21 @@ class MotorControl():
             self.pwm.setDutycycle(self.PWMB, 1)
 
 class MotorControlService:
-    def __init__(self):
-        self.motor_control = MotorControl()
+    def __init__(self, motor_control, restApiUrl, apiToken):
+        self.motor_control = motor_control
+        self.restApiUrl = restApiUrl
+        self.apiToken = apiToken
+        self.authHeader = {'Authorization': f'{self.apiToken}'}
+        try:
+            settings = requests.get(f"{self.restApiUrl}/settings", headers=self.authHeader).json()
+            print(settings)
+            for setting in settings:
+                if setting["settingName"] == "maxMotorPower":
+                    self.motor_control.max_speed = int(setting["value"])
+                elif setting["settingName"] == "motorTrim":
+                    self.motor_control.trim = int(setting["value"])
+        except Exception as e:
+            print(f"Error in fetching motor control settings: {e}")
 
     def handle_motor_action(self, params, motor):
         match params["action"]:
@@ -69,12 +84,35 @@ class MotorControlService:
         self.handle_motor_action(left_motor, "left")
         self.handle_motor_action(right_motor, "right")
 
+    def _set(self, params):
+        print(self.apiToken)
+        if "maxPower" in params:
+            if params["maxPower"] < 0 or params["maxPower"] > 100:
+                raise Exception("Max speed must be between 0 and 100")
+            self.motor_control.max_speed = params["maxPower"]
+            try:
+                requests.post(f"{self.restApiUrl}/settings", json={"name": "maxMotorPower", "value": str(params["maxPower"])}, headers=self.authHeader)
+            except Exception as e:
+                print(f"Error in updating setting: {e}")
+        if "motorTrim" in params:
+            if params["motorTrim"] < -50 or params["motorTrim"] > 50:
+                raise Exception("Trim must be between -100 and 100")
+            self.motor_control.trim = params["motorTrim"]
+            try:
+                requests.post(f"{self.restApiUrl}/settings", json={"name": "motorTrim", "value": str(params["motorTrim"])}, headers=self.authHeader)
+            except Exception as e:
+                print(f"Error in updating setting: {e}")
+
     def handle_message(self, msg):
         try:
             event = json.loads(msg)
             match event["type"]:
                 case "motorControl":
                     self.handle_motor_control_msg(event["params"])
+                    return "ack"
+                case "settings":
+                    print('settings')
+                    self._set(event["params"])
                     return "ack"
         except Exception as e:
             print(f"Error in processing control message: {msg}, {e}")
