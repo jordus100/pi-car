@@ -35,10 +35,11 @@ class AuthService:
             raise ValueError("Invalid token")
 
     @staticmethod
-    def change_password(user, old_password, new_password):
+    def change_password(user_id, old_password, new_password):
         """Change the password for a user."""
+        user = UserRepository.get_by_id(user_id)
         if not check_password_hash(user.password, old_password):
             raise ValueError("Old password is incorrect")
 
         user.password = generate_password_hash(new_password)
-        user.save()
+        UserRepository.update(user)

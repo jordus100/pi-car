@@ -22,6 +22,11 @@ class UserRepository:
         db.session.commit()
 
     @staticmethod
+    def update(user):
+        db.session.merge(user)
+        db.session.commit()
+
+    @staticmethod
     def delete(user):
         db.session.delete(user)
         db.session.commit()

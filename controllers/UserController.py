@@ -55,8 +55,10 @@ def list_users():
 @UserBp.route('/users/<int:user_id>', methods=['DELETE'])
 @admin_required
 def delete_user(user_id):
-    if not UserService.delete_user(user_id):
-        return jsonify({"message": f"User with ID {user_id} not found or cannot be deleted."}), 404
+    try:
+        UserService.delete_user(user_id)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
     return jsonify({"message": f"User with ID {user_id} has been deleted."})
 
 
@@ -115,12 +117,13 @@ def check_session():
 def change_password():
     if 'user_id' not in session:
         return jsonify({'message': 'Unauthorized'}), 401
-
     data = request.get_json()
     if not all(key in data for key in ('old_password', 'new_password')):
         return jsonify({'message': 'Old password and new password are required'}), 400
-
-    if not AuthService.change_password(session['user_id'], data['old_password'], data['new_password']):
-        return jsonify({'message': 'Old password is incorrect or update failed'}), 401
-
+    if len(data['new_password']) < 8:
+        return jsonify({'message': 'Password must be at least 8 characters long'}), 400
+    try:
+        AuthService.change_password(session['user_id'], data['old_password'], data['new_password'])
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 400
     return jsonify({'message': 'Password changed successfully'}), 200

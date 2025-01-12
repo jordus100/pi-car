@@ -12,7 +12,7 @@ class UserService:
         if UserRepository.get_by_username(username):
             raise ValueError("Username already exists")
         hashed_password = generate_password_hash(password)
-        new_user = User(username=username, password=hashed_password)
+        new_user = User(username=username, password=hashed_password, is_admin=False)
         UserRepository.save(new_user)
         return new_user
 

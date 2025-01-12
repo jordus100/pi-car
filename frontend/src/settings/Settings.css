@@ -1,10 +1,12 @@
-/* AdminUserMenu.css */
-
 .admin-user-menu {
   font-family: Arial, sans-serif;
   padding: 20px;
-  max-width: 800px;
+  width: min(800px, 90%);
   margin: 0 auto;
+}
+
+.admin-user-menu h1 {
+  text-align: center;
 }
 
 .menu-header {
@@ -23,6 +25,7 @@
   padding: 10px 20px;
   cursor: pointer;
   border-radius: 4px;
+  min-width: 250px;
 }
 
 .toggle-btn:hover {
@@ -59,29 +62,36 @@
   margin-top: 20px;
 }
 
-.add-user {
+.simple-form {
   display: flex;
-  gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.add-user input {
+.simple-form input {
   flex: 1;
-  padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  min-height: 40px;
+  min-width: 250px;
+  box-sizing: border-box;
+  margin: 5px;
 }
 
-.add-user button {
+.simple-form button {
+  flex: 1;
   background-color: #007bff;
   color: white;
   border: none;
-  padding: 10px;
   cursor: pointer;
   border-radius: 4px;
+  min-width: 100px;
+  min-height: 40px;
+  box-sizing: border-box;
+  margin: 5px;
 }
 
-.add-user button:hover {
+.simple-form button:hover {
   background-color: #0056b3;
 }
 
@@ -111,4 +121,15 @@
 
 .user-table button:hover {
   background-color: #c82333;
+}
+
+.input-wrapper {
+  width: 100%;
+}
+
+.input-wrapper label {
+  display: inline-block;
+  width: 150px;
+  max-width: 25%;
+  text-align: center;
 }
