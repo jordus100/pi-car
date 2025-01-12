@@ -26,6 +26,12 @@ class MotorControl():
             raise Exception("Motor must be 'left' or 'right'")
         # scale speed to the range between min_speed and max_speed
         speed = int(((speed / 100) * (self.max_speed - self.min_speed) + self.min_speed))
+        # apply trim (positive for right engine bias)
+        if motor == 'right':
+            speed += int(self.trim / 2)
+        elif motor == 'left':
+            speed -= int(self.trim / 2)
+        speed -= self.trim / 2
         print(speed)
         if motor == 'left':
             self.pwm.setDutycycle(self.PWMA, speed)
